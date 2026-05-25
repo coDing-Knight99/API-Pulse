@@ -1,0 +1,16 @@
+{
+    "services": [
+        {
+            "name": "user-service",
+            "url": "http://localhost:3001"
+        },
+        {
+            "name": "product-service",
+            "url": "http://localhost:3002"
+        },
+        {
+            "name": "order-service",
+            "url": "http://localhost:3003"
+        }
+    ]
+}
