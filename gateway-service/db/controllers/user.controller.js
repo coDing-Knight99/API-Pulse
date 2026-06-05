@@ -47,10 +47,12 @@ const loginUser = async (req, res) => {
         const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user._id);
         res.status(200).cookie("accessToken", accessToken, {
             httpOnly: true,
-            secure: true,
+            secure: false,
+            sameSite: 'lax',
         }).cookie("refreshToken", refreshToken, {
             httpOnly: true,
-            secure: true,
+            secure: false,
+            sameSite: 'lax',
         }).json({ message: 'Login successful' });
         req.user = user; // Attach user to request for future use
     } catch (error) {

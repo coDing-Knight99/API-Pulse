@@ -4,6 +4,7 @@ export const verifyJWT = async (req,res,next)=>{
     
 
 try {
+    console.log("Verifying JWT...");
     const token = req.cookies?.accessToken || req.cookies?.AccessToken;
     // console.log("Token from cookie:", token);
 
@@ -25,7 +26,7 @@ try {
         res.status(401).json({ message: "Invalid Access Token" });
     }
 
-    req.userId = user._id;
+    req.user = user;
     next();
 } catch (error) {
     // console.log("JWT verification error:", error.name, error.message);
