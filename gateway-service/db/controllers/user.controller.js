@@ -1,5 +1,6 @@
 import User from '../models/User.js';
-
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
 const generateAccessAndRefreshTokens = async (user_id)=>{   
     try{
         const user = await User.findById(user_id);
@@ -19,11 +20,18 @@ const generateAccessAndRefreshTokens = async (user_id)=>{
 const registerUser = async (req, res) => {
     try {
         console.log("Registering user with data:", req.body);
-        const { name, email, password } = req.body;
-        const existingUser = await User.findOne({ email });
+        const { username, email, password } = req.body;
+        const hashedPassword = await bcrypt.hash(password, 10);
+        let existingUser = await User.findOne({ email });
         if (existingUser) {
             return res.status(400).json({ message: 'User already exists' });
-        }     const newUser =await User.create({ name:name, email:email, password:password });
+        }
+        existingUser = await User.findOne({ username });
+        if (existingUser) {
+            return res.status(400).json({ message: 'Username already taken' });
+        }
+        const newUser =await User.create({ username:username, email:email, password:hashedPassword });
+        console.log("User registered successfully:", newUser.email);
         res.status(201).json({ message: 'User registered successfully' });
     } catch (error) {
     console.log("REGISTER ERROR:", error);
@@ -45,6 +53,7 @@ const loginUser = async (req, res) => {
             return res.status(400).json({ message: 'Invalid credentials' });
         }
         const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user._id);
+        console.log("Login Successful for user:", user.email);
         res.status(200).cookie("accessToken", accessToken, {
             httpOnly: true,
             secure: false,
@@ -63,8 +72,21 @@ const logoutUser = async (req, res) => {
     try {
         const userId = req.user._id;
         await User.findByIdAndUpdate(userId, { $unset: { refreshToken: 1 } });
-        res.clearCookie("accessToken").clearCookie("refreshToken").json({ message: 'Logout successful' });
+        res.clearCookie("accessToken").clearCookie("refreshToken").status(200).json({ message: 'Logout successful' });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }  };
-export { registerUser, loginUser, logoutUser };
+
+        const loginStatus = async(req,res)=>{
+        const refreshToken = req.cookies.refreshToken;
+        if(!refreshToken){
+            return res.status(200).json({isLogin:false});
+        }
+        try{
+            const decodedToken = await jwt.verify(refreshToken,process.env.REFRESH_TOKEN_SECRET);
+            return res.status(200).json({isLogin:true});
+        }catch(error){
+            return res.status(200).json({isLogin:false});
+        }
+    }
+export { registerUser, loginUser, logoutUser, loginStatus };

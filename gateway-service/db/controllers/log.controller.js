@@ -61,4 +61,15 @@ const getServiceLogs = async (req,res) =>{
         res.status(500).json({message:'Error fetching service logs',error});
     }
 }
-export { LogController, getUserLogs, getServiceLogs};
+
+const getApiKeyLogs = async (req,res) =>{
+    try{
+        const apiKeyId=req.params.apikeyId;
+        const logs=await Log.find({apiKeyId:apiKeyId,user_id:req.user._id}).limit(10).sort({timestamp:-1})
+        res.status(200).json({logs});
+    }
+    catch(error){
+        res.status(500).json({message:'Error fetching API key logs',error});
+    }   
+};
+export { LogController, getUserLogs, getServiceLogs, getApiKeyLogs};

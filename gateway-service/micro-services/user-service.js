@@ -11,6 +11,9 @@ app.get('/users', (req, res) => {
 });
 app.post('/create_user', (req, res) => {
     console.log("User service received request to create user with data:");
+    const username=req.body?.username;
+    const password=req.body?.password;
+    console.log(username,password);
     res.status(201).json({ message: 'User created successfully' });
 });
 

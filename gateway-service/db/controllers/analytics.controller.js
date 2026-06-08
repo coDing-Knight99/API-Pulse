@@ -41,18 +41,23 @@ const getapikeyMetrics = async (req, res) => {
         const now = new Date();
         const date = now.toISOString().split('T')[0];
         const hour = String(now.getUTCHours()).padStart(2, '0');
-        const apikey=req.apiKey?.apikey;
+        const apikey=req.params.apikeyId;
         const apikeyMetricsHourly = await redis.hgetall(apikeyKeyHourly(apikey, date, hour));
         const apikeyMetricsDaily = await redis.hgetall(apikeyKeyDaily(apikey, date));
+        const apikeyGlobal = await redis.hgetall(`metrics:apikey:${apikey}`);
         Object.keys(apikeyMetricsHourly).forEach(key => {
             apikeyMetricsHourly[key] = parseInt(apikeyMetricsHourly[key], 10);
         });
         Object.keys(apikeyMetricsDaily).forEach(key => {
             apikeyMetricsDaily[key] = parseInt(apikeyMetricsDaily[key], 10);
         });
+        Object.keys(apikeyGlobal).forEach(key => {
+            apikeyGlobal[key] = parseInt(apikeyGlobal[key], 10);
+        });
         apikeyMetricsHourly.avglatency = apikeyMetricsHourly.latencyCount > 0 ? (apikeyMetricsHourly.latency || 0) / apikeyMetricsHourly.latencyCount : 0;
         apikeyMetricsDaily.avglatency = apikeyMetricsDaily.latencyCount > 0 ? (apikeyMetricsDaily.latency || 0) / apikeyMetricsDaily.latencyCount : 0;
-        res.status(200).json({ apikeyMetricsHourly, apikeyMetricsDaily });
+        apikeyGlobal.avglatency = apikeyGlobal.latencyCount > 0 ? (apikeyGlobal.latency || 0) / apikeyGlobal.latencyCount : 0;
+        res.status(200).json({ apikeyMetricsHourly, apikeyMetricsDaily, apikeyGlobal });
     } catch (error) {
         console.error("Error in getapikeyMetrics:", error);
         return res.status(500).json({ error: 'Internal Server Error' });
@@ -221,4 +226,72 @@ const getserviceDailyRequests = async ( req,res )=>{
         });
     }
 }
-export { getserviceMetrics, getapikeyMetrics, getglobalMetrics, getuserMetrics, getHourlyRequests, getserviceHourlyRequests, getserviceDailyRequests };
+
+const getKeyHourlyRequests = async (req, res) => {
+    try {
+        const apikey = req.params.apikeyId;
+        const now = new Date();
+        const date = now.toISOString().split("T")[0];
+        const hourlyRequests = [];
+        const hourlyLatency = [];
+        const hourlyErrors=[];
+        for(let hour = 0; hour < 24; hour++) {
+            const hr = String(hour).padStart(2, "0");
+            const key = apikeyKeyHourly(apikey, date, hr);
+            const metrics = await redis.hgetall(key);
+            hourlyRequests.push({
+                hour: hr,
+                requests: Number(metrics.requests || 0)
+            });
+            hourlyLatency.push({
+                hour: hr,
+                latency: Number((metrics.latency/metrics.latencyCount).toFixed(2) || 0)
+            });
+            hourlyErrors.push({
+                hour: hr,
+                errors: Number(metrics.errors || 0)
+            });
+        }
+        return res.status(200).json({hourlyRequests, hourlyLatency, hourlyErrors});
+    } catch(error) {
+        return res.status(500).json({
+            error: error.message
+        });
+    }
+};
+
+const getKeyDailyRequests = async (req, res) => {
+    try {
+        const apikey = req.params.apikeyId;
+        const now = new Date();
+        const dailyRequests = [];
+        const dailyLatency = [];
+        const dailyErrors=[];
+        for(let day = 6; day >= 0; day--) {
+            const dt = new Date(now);
+            dt.setDate(now.getDate() - day);
+            const d = dt.toISOString().split("T")[0];
+            const key = apikeyKeyDaily(apikey, d);
+            const metrics = await redis.hgetall(key);
+            dailyRequests.push({
+                day: d,
+                requests: Number(metrics.requests || 0)
+            });
+            dailyLatency.push({
+                day: d,
+                latency: Number((metrics.latency/metrics.latencyCount).toFixed(2) || 0)
+            });
+            dailyErrors.push({
+                day: d,
+                errors: Number(metrics.errors || 0)
+            });
+        }
+        return res.status(200).json({dailyRequests, dailyLatency, dailyErrors});
+    } catch(error) {
+        return res.status(500).json({
+            error: error.message
+        });
+    }
+}
+
+export { getserviceMetrics, getapikeyMetrics, getglobalMetrics, getuserMetrics, getHourlyRequests, getserviceHourlyRequests, getserviceDailyRequests, getKeyHourlyRequests, getKeyDailyRequests };

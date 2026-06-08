@@ -7,7 +7,7 @@ const aggregation = (req, res, next) => {
         try {
             console.log("Aggregating metrics...\n\n");
             const serviceId = req.service?._id;
-            const apikey = req.apiKey?.apikey;
+            const apikey = req.apiKey?._id;
             const now = new Date();
             const date = now.toISOString().split('T')[0];
             const hour = String(now.getUTCHours()).padStart(2, '0');

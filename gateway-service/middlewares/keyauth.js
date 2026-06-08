@@ -10,7 +10,7 @@ const keyauth= async (req,res,next)=>{
         return res.status(401).json({ error: 'Unauthorized' });
     }
     const hashedKey = crypto.createHash('sha256').update(apiKey).digest('hex');
-    const key=await apikey.findOne({ apikey: hashedKey,user_id: req.user._id, isActive: true });
+    const key=await apikey.findOne({ apikey: hashedKey, isActive: true });
     if (!key){
         return res.status(401).json({ error: 'Unauthorized' });
     }

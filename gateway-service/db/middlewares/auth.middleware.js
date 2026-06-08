@@ -4,7 +4,6 @@ export const verifyJWT = async (req,res,next)=>{
     
 
 try {
-    console.log("Verifying JWT...");
     const token = req.cookies?.accessToken || req.cookies?.AccessToken;
     // console.log("Token from cookie:", token);
 
