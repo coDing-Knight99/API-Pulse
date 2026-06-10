@@ -20,7 +20,8 @@ import { getKeyDailyRequests, getKeyHourlyRequests } from './db/controllers/anal
 import {getserviceMetrics, getapikeyMetrics, getglobalMetrics, getuserMetrics, getHourlyRequests, getserviceHourlyRequests, getserviceDailyRequests } from './db/controllers/analytics.controller.js';
 
 dotenv.config();
-import connectDB from './db/connectdb.js';
+// import connectDB from './db/ConnectDB.jsx';
+import connectDB from './db/connectDB.js';
 connectDB();
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import cors from 'cors';
@@ -28,7 +29,7 @@ import cors from 'cors';
 const app = express();
 const PORT = 3000;
 app.use(cors({
-    origin: 'http://localhost:5173',
+    origin: `${process.env.FRONTEND_URL}`,
     credentials: true
 }));
 app.use(cookieParser());
