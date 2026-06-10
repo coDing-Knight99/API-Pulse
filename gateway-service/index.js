@@ -61,6 +61,9 @@ app.post('/sandbox',(req,res,next)=>{console.log("Sandbox request received");
     next();
 }, verifyJWT, sendRequest);
 app.get('/sandbox/recent-requests', verifyJWT, getRecentRequests);
+app.get('/userdata', verifyJWT, (req, res) => {
+    res.json({ username: req.user.username, email: req.user.email });
+});
 app.use(
     `/service/:service_name`,(req,res,next)=>{console.log("Service route accessed"); next()},aggregation,keyauth,serviceauth,ipRateLimiter,apikeyRateLimiter,LogController,
     Logger,

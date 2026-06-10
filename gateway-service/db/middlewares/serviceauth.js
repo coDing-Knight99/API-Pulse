@@ -6,7 +6,11 @@ const serviceauth = async(req, res, next) => {
     if (!serviceName) {
         return res.status(400).json({error: 'Service name is required in the URL'})
     }
+    // if(key.user_id.toString() !== req.user?._id.toString() && key.user_id.toString() !== req.userInfo?.user_id.toString()){
+    //     return res.status(403).json({ error: 'Forbidden' });
+    // }
     const service = await Service.findOne({ service_name: serviceName, owner_id: req.user?._id || req.userInfo?.user_id, isActive: true });
+    
     if (!service) {
         return res.status(404).json({ error: 'Service not found' });
     }

@@ -34,7 +34,7 @@ const apikeyRateLimiter = async(req,res,next)=>{
             {
             return res.status(401).json({ message: 'Invalid API key' });
         }
-        const max_requests = ApiKeyMeta.tier === 'PREMIUM' ? 1000 : 100;
+        let max_requests = (ApiKeyMeta.tier === 'Enterprise')? 10000 : (ApiKeyMeta.tier === 'Pro')? 1000 : 100;
         let requests = await redis.get(key);
         requests = requests ? parseInt(requests):0;
         if(requests>=max_requests){
