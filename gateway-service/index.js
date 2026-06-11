@@ -93,6 +93,14 @@ app.use(
 app.get('/', (req, res) => {
     res.send('Welcome to the API Gateway!');
 }   );
-app.listen(PORT, () => {
-    console.log(`Gateway running on port ${PORT}`);
+
+app.get('/health', (req, res) => {
+    res.status(200).json({
+    status: "ok",
+    uptime: process.uptime(),
+    timestamp: Date.now()
+})});
+
+app.listen(process.env.PORT || PORT, () => {
+    console.log(`Gateway running on port ${process.env.PORT || PORT}`);
 });
