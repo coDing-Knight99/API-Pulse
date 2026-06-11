@@ -67,7 +67,6 @@ app.get('/userdata', verifyJWT, (req, res) => {
 });
 app.use(
     `/service/:service_name`,(req,res,next)=>{console.log("Service route accessed"); next()},aggregation,keyauth,serviceauth,ipRateLimiter,apikeyRateLimiter,LogController,
-    Logger,
     (req,res,next) => { 
         console.log(req.originalUrl);
         const proxy = createProxyMiddleware({
