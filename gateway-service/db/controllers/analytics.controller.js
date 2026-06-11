@@ -245,7 +245,7 @@ const getKeyHourlyRequests = async (req, res) => {
             });
             hourlyLatency.push({
                 hour: hr,
-                latency: Number((metrics.latency/metrics.latencyCount).toFixed(2) || 0)
+                latency: Number(metrics.latency?(metrics.latency/metrics.latencyCount).toFixed(2):0)
             });
             hourlyErrors.push({
                 hour: hr,
