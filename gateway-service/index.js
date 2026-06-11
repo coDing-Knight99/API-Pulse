@@ -27,7 +27,7 @@ import { createProxyMiddleware } from 'http-proxy-middleware';
 import cors from 'cors';
 
 const app = express();
-const PORT =process.env.PORT || PORT;
+const PORT =process.env.PORT || 3000;
 app.use(cors({
     origin: `${process.env.FRONTEND_URL}`,
     credentials: true
@@ -35,6 +35,7 @@ app.use(cors({
 app.use(cookieParser());
 
 app.use(express.json());
+app.set('trust proxy', 1);
 app.post('/register-service', verifyJWT, registerService);
 app.post('/edit-service', verifyJWT, editService);
 app.post('/delete-service', verifyJWT, deleteService);
@@ -47,7 +48,7 @@ app.post('/revoke-api-key', verifyJWT, revokeApiKey);
 app.get('/api-keys', verifyJWT, getApiKeys);    
 app.get('/metrics/service/:service_name', verifyJWT, serviceauth, getserviceMetrics);
 app.get('/metrics/apikey/:apikeyId', verifyJWT, getapikeyMetrics);
-app.get('/metrics/global', getglobalMetrics);
+// app.get('/metrics/global', getglobalMetrics);
 app.get('/metrics/user', verifyJWT, getuserMetrics);
 app.get('/metrics/userhourlyrequests', verifyJWT, getHourlyRequests);
 app.get('/services', verifyJWT, getServices);
@@ -65,33 +66,62 @@ app.get('/sandbox/recent-requests', verifyJWT, getRecentRequests);
 app.get('/userdata', verifyJWT, (req, res) => {
     res.json({ username: req.user.username, email: req.user.email });
 });
+
+const proxyCache = new Map();
 app.use(
     `/service/:service_name`,(req,res,next)=>{console.log("Service route accessed"); next()},aggregation,keyauth,serviceauth,ipRateLimiter,apikeyRateLimiter,LogController,
-    (req,res,next) => { 
-        console.log(req.originalUrl);
-        const proxy = createProxyMiddleware({
+    (req, res, next) => {
+    console.log(req.originalUrl);
+
+    if (!req.service || !req.service.url) {
+        return res.status(500).json({
+            error: "Service not resolved"
+        });
+    }
+
+    let proxy = proxyCache.get(req.service.url);
+
+    if (!proxy) {
+        proxy = createProxyMiddleware({
             target: req.service.url,
+            proxyTimeout: 10000,
+            timeout: 10000,
             changeOrigin: true,
             ignorePath: false,
-            pathRewrite: (path,req )=>{
-                 return req.originalUrl.replace(`/service/${req.params.service_name}`, '');
-            },
+            pathRewrite: (path, req) =>
+                req.originalUrl.replace(
+                    `/service/${req.params.service_name}`,
+                    ""
+                ),
             on: {
                 proxyReq: (proxyReq, req) => {
-                    console.log("Proxying request to service:", req.service.service_name, "at URL:", req.service.url);
                     console.log(
-                        `[Gateway] ${req.method} ${req.originalUrl}`
+                        "Proxying request to service:",
+                        req.service.service_name,
+                        "at URL:",
+                        req.service.url
                     );
+                    console.log(`[Gateway] ${req.method} ${req.originalUrl}`);
                 }
             }
-        })
-        console.log(proxy);
-        return proxy(req, res, next);
+        });
+
+        proxyCache.set(req.service.url, proxy);
+    }
+
+    return proxy(req, res, next);
+});
+app.use((err, req, res, next) => {
+    console.error(err);
+
+    res.status(err.status || 500).json({
+        success: false,
+        message: err.message || "Internal Server Error"
     });
-    
-app.get('/', (req, res) => {
-    res.send('Welcome to the API Gateway!');
-}   );
+});
+// app.get('/', (req, res) => {
+//     res.send('Welcome to the API Gateway!');
+// }   );
 
 app.get('/health', (req, res) => {
     res.status(200).json({
@@ -101,5 +131,5 @@ app.get('/health', (req, res) => {
 })});
 
 app.listen(PORT, '0.0.0.0',() => {
-    console.log(`Gateway running on port ${process.env.PORT || PORT}`);
+    console.log(`Gateway running on port ${process.env.PORT || 3000}`);
 });
