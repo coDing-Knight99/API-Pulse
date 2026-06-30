@@ -78,12 +78,12 @@ const logoutUser = async (req, res) => {
     }  };
 
         const loginStatus = async(req,res)=>{
-        const refreshToken = req.cookies.refreshToken;
-        if(!refreshToken){
+        const accesToken = req.cookies.accesToken;
+        if(!accesToken){
             return res.status(200).json({isLogin:false});
         }
         try{
-            const decodedToken = await jwt.verify(refreshToken,process.env.REFRESH_TOKEN_SECRET);
+            const decodedToken = await jwt.verify(refreshToken,process.env.ACCESS_TOKEN_SECRET);
             return res.status(200).json({isLogin:true});
         }catch(error){
             return res.status(200).json({isLogin:false});
