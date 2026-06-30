@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import apikey from "../db/models/apikey.js";
+import ApiKey from "../db/models/apikey.js";
 import crypto from "crypto";
 const keyauth= async (req,res,next)=>{
     try{
@@ -10,7 +10,7 @@ const keyauth= async (req,res,next)=>{
         return res.status(401).json({ error: 'Unauthorized' });
     }
     const hashedKey = crypto.createHash('sha256').update(apiKey).digest('hex');
-    const key=await apikey.findOne({ apikey: hashedKey, isActive: true });
+    const key=await ApiKey.findOne({ apikey: hashedKey, isActive: true });
     if (!key){
         return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -21,7 +21,7 @@ const keyauth= async (req,res,next)=>{
     return res.status(500).json({ error: error.toString() });
 }
 finally{
-    req.userInfo={ user_id: req.apiKey.user_id , tier: req.apiKey.tier };
+    req.userInfo={ user_id: req.apiKey.user_id , tier: req.apiKey.tier, hashedKey: req.apiKey.apikey };
     console.log("API key authenticated for user:", req.userInfo.user_id, "with tier:", req.userInfo.tier);
     next();
 }

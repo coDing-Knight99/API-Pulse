@@ -32,11 +32,11 @@ const registerUser = async (req, res) => {
         }
         const newUser =await User.create({ username:username, email:email, password:hashedPassword });
         console.log("User registered successfully:", newUser.email);
-        res.status(201).json({ message: 'User registered successfully' });
+        return res.status(201).json({ message: 'User registered successfully' });
     } catch (error) {
     console.log("REGISTER ERROR:", error);
 
-    res.status(500).json({
+    return res.status(500).json({
         message: error.message,
         error: error
     });
@@ -54,18 +54,18 @@ const loginUser = async (req, res) => {
         }
         const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user._id);
         console.log("Login Successful for user:", user.email);
-        res.status(200).cookie("accessToken", accessToken, {
+        req.user = user; // Attach user to request for future use
+        return res.status(200).cookie("accessToken", accessToken, {
             httpOnly: true,
-            secure: true,
-            sameSite: 'none',
+            secure: false,
+            sameSite: 'lax',
         }).cookie("refreshToken", refreshToken, {
             httpOnly: true,
-            secure: true,
-            sameSite: 'none',
+            secure: false,
+            sameSite: 'lax',
         }).json({ message: 'Login successful' });
-        req.user = user; // Attach user to request for future use
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        return res.status(500).json({ error: error.message });
     }
 };
 const logoutUser = async (req, res) => {

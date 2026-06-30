@@ -1,5 +1,6 @@
 import Log from "../models/Log.js";
 import crypto from "crypto";
+import redis from "../Redis.js";
 const LogController = async(req,res,next)=>{
     console.log("Logging request...\n \n");
     const request_id = crypto.randomUUID();
@@ -15,8 +16,8 @@ const LogController = async(req,res,next)=>{
         try{
             const responseTime = Date.now() - req.startTime;
             const statusCode = res.statusCode;
-
-            const logEntry = await Log.create({
+            const queueKey = "queue:logs"
+            const logEntry = {
                 request_id: request_id,
                 user_id: req.userInfo.user_id || 'anonymous',
                 ip: ip,
@@ -29,7 +30,10 @@ const LogController = async(req,res,next)=>{
                 apiKeyName: apiKeyName,
                 tier: tier,    
                 rateLimited: req.rateLimited || false
-            });
+            };
+            await redis.lpush(queueKey,JSON.stringify(logEntry)).catch((err)=>{
+                console.error("Error pushing log to queue",err);
+            })
         }
         catch(error){
             console.error("Error in log controller:", error);

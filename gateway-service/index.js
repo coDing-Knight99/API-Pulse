@@ -1,5 +1,6 @@
 import express from 'express';
 // import routes from './routes/routes.json' with { type: 'json' };
+import startWorker from './worker.js';
 import keyauth from './middlewares/keyauth.js';
 import {sendRequest,getRecentRequests}from './db/controllers/sandbox.controller.js';
 import User from './db/models/User.js';
@@ -27,6 +28,7 @@ import { createProxyMiddleware } from 'http-proxy-middleware';
 import cors from 'cors';
 
 const app = express();
+startWorker();
 const PORT =process.env.PORT || 3000;
 app.use(cors({
     origin: `${process.env.FRONTEND_URL}`,
@@ -84,6 +86,7 @@ app.use(
     if (!proxy) {
         proxy = createProxyMiddleware({
             target: req.service.url,
+            xfwd:true,
             proxyTimeout: 10000,
             timeout: 10000,
             changeOrigin: true,
@@ -107,6 +110,9 @@ app.use(
         });
 
         proxyCache.set(req.service.url, proxy);
+        setTimeout(() => {
+            proxyCache.delete(req.service.url);
+        }, 60000);
     }
 
     return proxy(req, res, next);

@@ -16,15 +16,9 @@ const apikeyRateLimiter = async(req,res,next)=>{
         let ApiKeyMeta = await redis.get(metakey);
         console.log("API key metadata from Redis:", ApiKeyMeta);
         if(!ApiKeyMeta){
-            ApiKeyMeta = await ApiKey.findOne({
-                apikey: hashedKey,
-                isActive: true
-            });
-            if(ApiKeyMeta){
-                console.log("API key metadata found in database:", ApiKeyMeta);
-                await redis.set(metakey, JSON.stringify({ tier: ApiKeyMeta.tier }));
+                // console.log("API key metadata found in database:", ApiKeyMeta);
+                await redis.set(metakey, JSON.stringify({ tier: req.userInfo.tier }));
                 await redis.expire(metakey, 3600);
-            }
         }
         else
         {
