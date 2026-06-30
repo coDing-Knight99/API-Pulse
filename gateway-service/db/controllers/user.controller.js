@@ -57,12 +57,12 @@ const loginUser = async (req, res) => {
         req.user = user; // Attach user to request for future use
         return res.status(200).cookie("accessToken", accessToken, {
             httpOnly: true,
-            secure: false,
-            sameSite: 'lax',
+            secure: true,
+            sameSite: 'none',
         }).cookie("refreshToken", refreshToken, {
             httpOnly: true,
-            secure: false,
-            sameSite: 'lax',
+            secure: true,
+            sameSite: 'none',
         }).json({ message: 'Login successful' });
     } catch (error) {
         return res.status(500).json({ error: error.message });
