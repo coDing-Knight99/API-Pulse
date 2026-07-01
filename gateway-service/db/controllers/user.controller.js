@@ -38,8 +38,7 @@ const registerUser = async (req, res) => {
         console.log("REGISTER ERROR:", error);
 
         return res.status(500).json({
-            message: error.message,
-            error: error
+            message: "Internal Server Error"
         });
     }
 };
@@ -56,27 +55,32 @@ const loginUser = async (req, res) => {
         }
         const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user._id);
         console.log("Login Successful for user:", user.email);
-        req.user = user; // Attach user to request for future use
         return res.status(200).cookie("accessToken", accessToken, {
             httpOnly: true,
-            secure: false,
-            sameSite: 'lax',
+            secure: true,
+            sameSite: 'none',
+            maxAge: 15 * 60 * 1000 // 900000 ms
         }).cookie("refreshToken", refreshToken, {
             httpOnly: true,
-            secure: false,
-            sameSite: 'lax',
+            secure: true,
+            sameSite: 'none',
+            maxAge: 10 * 24 * 60 * 60 * 1000 // refresh token
         }).json({ message: 'Login successful' });
     } catch (error) {
-        return res.status(500).json({ error: error.message });
+        return res.status(500).json({ message:"Internal Server Error" });
     }
 };
 const logoutUser = async (req, res) => {
     try {
         const userId = req.user._id;
         await User.findByIdAndUpdate(userId, { $unset: { refreshToken: 1 } });
-        res.clearCookie("accessToken").clearCookie("refreshToken").status(200).json({ message: 'Logout successful' });
+        return res.clearCookie("accessToken",{httpOnly: true,
+            secure: true,
+            sameSite: "none",}).clearCookie("refreshToken",{httpOnly: true,
+                secure: true,
+                sameSite: "none",}).status(200).json({ message: 'Logout successful' });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        return res.status(500).json({ message:"Internal Server Error" });
     }
 };
 
@@ -123,7 +127,7 @@ const refreshTokens = async (req, res) => {
                 return res.status(401).json({ isLogin: false, refreshTokenMissing: true });
             const user = await User.findOne({ _id: decodedRefreshToken._id });
             if (!user) {
-                return res.status(200).json({ isLogin: false, userBlackListed: true });
+                return res.status(401).json({ isLogin: false, userBlackListed: true });
             }
             if (user.refreshToken != refreshToken) {
                 return res.status(403).json({ isLogin: false, forbidden: true })
@@ -134,19 +138,21 @@ const refreshTokens = async (req, res) => {
             await user.save({ validateBeforeSave: false });
             return res.status(200).cookie("refreshToken", newRefreshToken, {
                 httpOnly: true,
-                secure: false,
-                sameSite: "lax",
+                secure: true,
+                sameSite: "none",
+                maxAge: 10 * 24 * 60 * 60 * 1000 // refresh token
             }).cookie("accessToken", newAccessToken, {
                 httpOnly: true,
-                secure: false,
-                sameSite: "lax"
+                secure: true,
+                sameSite: "none",
+                maxAge: 15 * 60 * 1000 // access token
             }).json({
                 isLogin: true,
                 refreshedUsingRefreshToken: true
             });
         }
     } else {
-        res.status(401).json({ isLogin: false, accessTokenMissing: true })
+        return res.status(401).json({ isLogin: false, accessTokenMissing: true })
     }
 }
 export { registerUser, loginUser, logoutUser, loginStatus, refreshTokens };
