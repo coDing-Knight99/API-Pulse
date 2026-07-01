@@ -1,18 +1,19 @@
 import User from '../models/User.js';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-const generateAccessAndRefreshTokens = async (user_id)=>{   
-    try{
+const generateAccessAndRefreshTokens = async (user_id) => {
+    try {
         const user = await User.findById(user_id);
 
-    const accessToken = user.generateAccessToken();
-    const refreshToken = user.generateRefreshToken();
+        const accessToken = user.generateAccessToken();
+        const refreshToken = user.generateRefreshToken();
 
-    user.refreshToken = refreshToken;
-    await user.save({validateBeforeSave: false});
+        user.refreshToken = refreshToken;
+        await user.save({ validateBeforeSave: false });
 
-    return {accessToken,refreshToken};}
-    catch(error){
+        return { accessToken, refreshToken };
+    }
+    catch (error) {
         throw new Error('Error generating tokens');
     }
 }
@@ -30,20 +31,21 @@ const registerUser = async (req, res) => {
         if (existingUser) {
             return res.status(400).json({ message: 'Username already taken' });
         }
-        const newUser =await User.create({ username:username, email:email, password:hashedPassword });
+        const newUser = await User.create({ username: username, email: email, password: hashedPassword });
         console.log("User registered successfully:", newUser.email);
         return res.status(201).json({ message: 'User registered successfully' });
     } catch (error) {
-    console.log("REGISTER ERROR:", error);
+        console.log("REGISTER ERROR:", error);
 
-    return res.status(500).json({
-        message: error.message,
-        error: error
-    });
-    }   };
+        return res.status(500).json({
+            message: error.message,
+            error: error
+        });
+    }
+};
 const loginUser = async (req, res) => {
     try {
-        console.log("Login attempt with data:", req.body);      
+        console.log("Login attempt with data:", req.body);
         const { email, password } = req.body;
         if (!email || !password) {
             return res.status(400).json({ message: 'Email and password are required' });
@@ -57,12 +59,12 @@ const loginUser = async (req, res) => {
         req.user = user; // Attach user to request for future use
         return res.status(200).cookie("accessToken", accessToken, {
             httpOnly: true,
-            secure: true,
-            sameSite: 'none',
+            secure: false,
+            sameSite: 'lax',
         }).cookie("refreshToken", refreshToken, {
             httpOnly: true,
-            secure: true,
-            sameSite: 'none',
+            secure: false,
+            sameSite: 'lax',
         }).json({ message: 'Login successful' });
     } catch (error) {
         return res.status(500).json({ error: error.message });
@@ -75,18 +77,76 @@ const logoutUser = async (req, res) => {
         res.clearCookie("accessToken").clearCookie("refreshToken").status(200).json({ message: 'Logout successful' });
     } catch (error) {
         res.status(500).json({ error: error.message });
-    }  };
-
-        const loginStatus = async(req,res)=>{
-        const refreshToken = req.cookies.refreshToken;
-        if(!refreshToken){
-            return res.status(200).json({isLogin:false});
-        }
-        try{
-            const decodedToken = await jwt.verify(refreshToken,process.env.REFRESH_TOKEN_SECRET);
-            return res.status(200).json({isLogin:true});
-        }catch(error){
-            return res.status(200).json({isLogin:false});
-        }
     }
-export { registerUser, loginUser, logoutUser, loginStatus };
+};
+
+const loginStatus = async (req,res) =>{
+    const accessToken = req.cookies.accessToken
+    if(!accessToken)
+    {
+        return res.status(401).json({isLogin:false})
+    }
+    try{
+        const decodedToken = jwt.verify(accessToken,process.env.ACCESS_TOKEN_SECRET);
+        return res.status(200).json({isLogin:true})
+    }catch(error){
+        return res.status(401).json({isLogin:false})
+    }
+}
+
+const refreshTokens = async (req, res) => {
+    const accessToken = req.cookies.accessToken;
+    let decodedAccessToken;
+    if (accessToken) {
+        try {
+            decodedAccessToken = jwt.verify(accessToken, process.env.ACCESS_TOKEN_SECRET);
+            return res.status(200).json({ isLogin: true, accessTokenPersisted: true })
+        }
+        catch (error) {
+            if (error.name !== "TokenExpiredError") {
+                return res.status(401).json({
+                    isLogin: false,
+                    invalidAccessToken: true
+                });
+            }
+            const refreshToken = req.cookies.refreshToken;
+            let decodedRefreshToken;
+            if (refreshToken) {
+                try {
+                    decodedRefreshToken = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET)
+                }
+                catch (err) {
+                    return res.status(401).json({ isLogin: false, accessTokenExpired: true })
+                }
+            }
+            else
+                return res.status(401).json({ isLogin: false, refreshTokenMissing: true });
+            const user = await User.findOne({ _id: decodedRefreshToken._id });
+            if (!user) {
+                return res.status(200).json({ isLogin: false, userBlackListed: true });
+            }
+            if (user.refreshToken != refreshToken) {
+                return res.status(403).json({ isLogin: false, forbidden: true })
+            }
+            const newAccessToken = await user.generateAccessToken();
+            const newRefreshToken = await user.generateRefreshToken();
+            user.refreshToken = newRefreshToken
+            await user.save({ validateBeforeSave: false });
+            return res.status(200).cookie("refreshToken", newRefreshToken, {
+                httpOnly: true,
+                secure: false,
+                sameSite: "lax",
+            }).cookie("accessToken", newAccessToken, {
+                httpOnly: true,
+                secure: false,
+                sameSite: "lax"
+            }).json({
+                isLogin: true,
+                refreshedUsingRefreshToken: true
+            });
+        }
+    } else {
+        res.status(401).json({ isLogin: false, accessTokenMissing: true })
+    }
+}
+export { registerUser, loginUser, logoutUser, loginStatus, refreshTokens };

@@ -9,7 +9,7 @@ import dotenv from 'dotenv';
 import verifyJWT from './db/middlewares/auth.middleware.js';
 import serviceauth from './db/middlewares/serviceauth.js';
 import { createApiKey, revokeApiKey, getApiKeys } from './db/controllers/api.controller.js';
-import { registerUser, loginUser, logoutUser, loginStatus } from './db/controllers/user.controller.js';
+import { registerUser, loginUser, logoutUser, loginStatus, refreshTokens } from './db/controllers/user.controller.js';
 import  cookieParser from 'cookie-parser';
 import {registerService, deleteService, getServices, editService} from './db/controllers/microservice.controller.js';
 import Service from './db/models/Service.js';  
@@ -68,6 +68,7 @@ app.get('/sandbox/recent-requests', verifyJWT, getRecentRequests);
 app.get('/userdata', verifyJWT, (req, res) => {
     res.json({ username: req.user.username, email: req.user.email });
 });
+app.get('/refreshTokens',refreshTokens)
 
 const proxyCache = new Map();
 app.use(
